@@ -175,6 +175,15 @@ def gen_bit_to_log_message(data: bytes, log_messages) -> dict:
     return bit_to_log_message
 
 
+def get_bytes_per_line():
+    """Return bytes per hexdump line based on viewport width."""
+    from browser import window  # pylint: disable=import-outside-toplevel
+    w = window.innerWidth
+    # 4 bytes/line = ~66 chars, 2 bytes/line = ~38 chars
+    # At 9px mono (~5.4px/char): 66*5.4=356, 38*5.4=205
+    return 2 if w < 500 else 4
+
+
 def print_hexdump(data: bytes) -> None:
     """Print an interactive hexdump with binary representation and ASCII
     representation of the data, allowing to highlight bits in the hexdump
@@ -182,18 +191,18 @@ def print_hexdump(data: bytes) -> None:
     hd = document["hexdump"]
     hd.clear()
 
+    bpl = get_bytes_per_line()
     bit_to_log_message = gen_bit_to_log_message(data, log_messages)
     byte_number = 0
-    # We print 4 bytes per line:
-    for i in range(0, len(data), 4):
-        b = data[i : i + 4]
+    for i in range(0, len(data), bpl):
+        b = data[i : i + bpl]
         # print offset
         hd <= S(f"{i:08x}  ")
         # print hex
         for c in b:
             hd <= S(f"{c:02x} ")
         # align hex
-        for _ in range(4 - len(b)):
+        for _ in range(bpl - len(b)):
             hd <= S("   ")
         hd <= S(" [")
         # print binary - this is the complex part
@@ -209,12 +218,11 @@ def print_hexdump(data: bytes) -> None:
             hd <= S(" ")
             byte_number += 1
         # align binary
-        for _ in range(4 - len(b)):
+        for _ in range(bpl - len(b)):
             hd <= S("         ")
         hd <= S("] ")
         # print ASCII
         for c in b:
-            # should we use a dot for non-hd <= Sable characters?
             if c < 32 or c > 126:
                 hd <= S(".")
             else:
@@ -303,14 +311,10 @@ def run_program(*_, **__) -> None:
         visualize_huffman(huff2, "huffman_browser_table2", is_first=False)
 
         # Print the compression result
-        summary = f"Compressed {len(s)} bytes to {len(buf)} bytes."
-        if len(buf) > len(s):
-            summary += " Compression made it bigger by "
-            summary += f"{len(buf) - len(s)} bytes."
-        else:
-            summary += " Compression made it smaller by "
-            summary += f"{len(s) - len(buf)} bytes."
-        summary += f" Compression ratio: {len(buf) / len(s):.2f}"
+        diff = len(buf) - len(s)
+        sign = "+" if diff > 0 else ""
+        ratio = len(buf) / len(s)
+        summary = f"{len(s)}B \u2192 {len(buf)}B ({sign}{diff}B, \u00d7{ratio:.2f})"
         document["compression_result"].text = summary
     except Exception as e:
         # In case of error, clear the hexdump and log the error message to

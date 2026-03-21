@@ -28,19 +28,24 @@
     --radius-lg: 12px;
 }
 
-html, body {
+html {
     height: 100%;
+    height: 100dvh;
+}
+
+body {
+    height: 100%;
+    margin: 0;
     font-family: var(--font-sans);
     background: var(--bg);
     color: var(--text);
     font-size: 14px;
     line-height: 1.5;
-}
-
-body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    /* Prevent iOS bounce / pull-to-refresh interfering */
+    overscroll-behavior: none;
 }
 
 pre {
@@ -163,22 +168,24 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
 }
 
 /* ── Compression Stats ────────────────────────────────────────── */
-.stats-bar {
+.stats-section {
     display: flex;
     align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    font-size: 12px;
+    color: var(--text-dim);
 }
+
+.stats-sep { opacity: 0.4; }
 
 #compression_result {
     font-family: var(--font-mono);
-    font-size: 12px;
-    color: var(--text-dim);
+    white-space: nowrap;
 }
 
 #explanation_hint {
-    font-size: 12px;
-    color: var(--text-dim);
     font-style: italic;
 }
 
@@ -216,7 +223,7 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
 
 /* ── Log Output ───────────────────────────────────────────────── */
 #output {
-    flex: 3;
+    flex: 2;
     min-height: 40px;
     overflow: auto;
     background: var(--bg);
@@ -233,7 +240,7 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
 
 /* ── Huffman Tables ───────────────────────────────────────────── */
 .huffman-section {
-    flex: 2;
+    flex: 3;
     min-height: 60px;
     overflow: hidden;
     display: flex;
@@ -422,7 +429,7 @@ tr:hover td {
     .header .logo { font-size: 13px; }
     #input { order: 3; min-width: 100%; font-size: 13px; }
     .section { padding: 6px 12px; }
-    #hexdump { padding: 6px 12px; font-size: 10px; }
+    #hexdump { padding: 6px 8px; font-size: 9.5px; }
     #output { padding: 6px 12px; font-size: 10px; }
     #huffman_browser { flex-direction: column; }
     #huffman_browser_table1, #huffman_browser_table2 { width: 100%; }
@@ -470,47 +477,66 @@ tr:hover td {
     <div class="help-section col_input_container">
         <p><span class="help-section-num">1</span> <strong>Input</strong> &mdash;
         Type any text and the page will instantly show the compressed output.</p>
+        <div class="help-demo" style="background:var(--surface);border-radius:var(--radius);padding:6px 10px;display:flex;align-items:center;gap:8px;margin-top:8px">
+            <span style="font-family:var(--font-mono);color:var(--accent);font-weight:700;font-size:12px;white-space:nowrap">pyflate2 <span style="color:var(--text-dim);font-weight:400">/ gzip</span></span>
+            <span style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-family:var(--font-mono);font-size:11px;color:var(--text)">Hello, world!</span>
+            <span style="background:var(--surface-raised);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-size:11px;color:var(--text)">&#9432; Help</span>
+        </div>
     </div>
 
     <div class="help-section col_bit_explanation">
         <p><span class="help-section-num">2</span> <strong>Compression Stats</strong> &mdash;
-        Shows how much the data was compressed. Negative savings means the compressed output
-        is larger than the input (common for very short strings).</p>
+        Shows how much the data was compressed. A positive diff means the
+        compressed output is larger (common for very short strings).</p>
+        <div class="help-demo" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:8px;padding:4px 0">
+            13B &rarr; 33B (+20B, &times;2.54) &middot; <em style="font-family:var(--font-sans)">Hover/tap bits to see their meaning</em>
+        </div>
     </div>
 
     <div class="help-section col_hexdump">
         <p><span class="help-section-num">3</span> <strong>Hexdump</strong> &mdash;
-        Binary representation of the compressed data. Hover over bits to see their meaning.
+        Binary representation of the compressed data. Hover/tap bits to see their meaning.
         Colors group bits that belong to the same symbol.</p>
-
-        <p>Example line:</p>
-        <pre><span>00000008  02 ff f3 48  [</span><span style="color:#9AC261;">00000010</span> <span style="color:#A4529A">11111111</span> <span style="color:#E8B274;">11110</span><span style="color:#43867B;">011</span> <span style="color:#7E64C9;">01001</span><span style="color:#E8B274;">000</span><span>] ...H</span></pre>
-
-        <p>Left: byte offset. Middle: hex bytes. Right: interactive binary bits (color-coded)
-        and ASCII representation (dots for non-printable).</p>
+        <pre style="font-size:11px;line-height:1.5;margin-top:8px"><span style="color:var(--text-dim)">00000008</span>  02 ff f3 48  [<span style="color:#9AC261;">00000010</span> <span style="color:#A4529A">11111111</span> <span style="color:#E8B274;">11110</span><span style="color:#43867B;">011</span> <span style="color:#7E64C9;">01001</span><span style="color:#E8B274;">000</span>] ...H</pre>
+        <p style="font-size:12px;margin-top:6px"><span style="color:var(--text-dim)">offset</span> &nbsp; hex bytes &nbsp; [<span style="color:#9AC261;">color</span><span style="color:#A4529A;">-coded</span> <span style="color:#E8B274;">bi</span><span style="color:#43867B;">ts</span>] ASCII</p>
     </div>
 
     <div class="help-section col_selected_bits_container">
         <p><span class="help-section-num">4</span> <strong>Selected Bits</strong> &mdash;
         Shows the binary and hex value of the bits you hover over. Gzip packs bits
-        left-to-right byte-wise but right-to-left bit-wise, which can be confusing
-        &mdash; this display helps clarify.</p>
+        left-to-right byte-wise but right-to-left bit-wise &mdash; this display helps untangle that.</p>
+        <div class="help-demo" style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:11px">
+            <span style="text-transform:uppercase;letter-spacing:0.06em;color:var(--text-dim);font-size:10px;font-weight:600">&#9670; Selected</span>
+            <span style="font-family:var(--font-mono);color:var(--accent)">11110011 (243, 0xF3)</span>
+        </div>
     </div>
 
     <div class="help-section col_output">
         <p><span class="help-section-num">5</span> <strong>Log</strong> &mdash;
-        Step-by-step decompression log. Hover over a log entry to highlight its bits in the hexdump,
-        or hover hexdump bits to scroll to the corresponding log entry.</p>
-
-        <p>Example: <code style="color:var(--green)">[91] found literal b'H'. r=72, hex(r)=0x48</code>
-        &mdash; at bit 91, the algorithm found literal "H" (Huffman code 72 = 0x48).</p>
+        Step-by-step decompression log. Hover a log entry to highlight its bits in the hexdump,
+        or hover hexdump bits to scroll to the log entry.</p>
+        <pre style="font-size:11px;line-height:1.6;margin-top:8px"><span style="color:#9AC261">[91] found symbol 0x1e of len 8 mapping to 0x48</span>
+<span style="color:#A4529A">[91] found literal b'H'. r=72, hex(r)=0x48</span>
+<span style="color:#E8B274">[99] found symbol 0xa9 of len 8 mapping to 0x65</span></pre>
     </div>
 
     <div class="help-section col_huffman_browser">
         <p><span class="help-section-num">6</span> <strong>Huffman Tables</strong> &mdash;
         The two Huffman code tables used by the compressor. First table: literal/length codes.
-        Second table: distance codes. Read more about
-        <a href="https://en.wikipedia.org/wiki/Huffman_coding">Huffman coding</a>.</p>
+        Second table: distance codes.
+        <a href="https://en.wikipedia.org/wiki/Huffman_coding">More about Huffman coding</a>.</p>
+        <div class="help-demo" style="display:flex;gap:1px;background:var(--border);border-radius:4px;overflow:hidden;margin-top:8px;font-family:var(--font-mono);font-size:10px">
+            <div style="flex:1;background:var(--surface);padding:4px 8px">
+                <div style="color:var(--text-dim);font-weight:600;font-size:9px;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:2px;margin-bottom:2px">Symbol &nbsp; Code</div>
+                <div>0 (0x00) &nbsp; EOF</div>
+                <div>1 (0x01) &nbsp; 80 ('P')</div>
+            </div>
+            <div style="flex:1;background:var(--surface);padding:4px 8px">
+                <div style="color:var(--text-dim);font-weight:600;font-size:9px;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:2px;margin-bottom:2px">Symbol &nbsp; Code</div>
+                <div>0 (0x00) &nbsp; 0</div>
+                <div>1 (0x01) &nbsp; 16</div>
+            </div>
+        </div>
     </div>
 
     <p style="margin-top: 20px; color: var(--text-dim); font-size: 13px;">
@@ -539,12 +565,10 @@ tr:hover td {
 </script>
 
 <!-- ── Compression Stats ───────────────────────────────────────── -->
-<div class="section">
-    <div class="section-label"><span class="icon">&#9881;</span> Compression</div>
-    <div class="stats-bar">
-        <span id="compression_result"></span>
-        <span id="explanation_hint">Hover/tap bits to see their meaning</span>
-    </div>
+<div class="section stats-section">
+    <span id="compression_result"></span>
+    <span class="stats-sep">&middot;</span>
+    <span id="explanation_hint">Hover/tap bits to see their meaning</span>
 </div>
 
 <!-- ── Hexdump ─────────────────────────────────────────────────── -->
