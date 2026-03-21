@@ -1,380 +1,580 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pyflate2 — Interactive Gzip Compression Visualizer</title>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/brython@3.12.4/brython.min.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/brython@3.12.4/brython_stdlib.js"></script>
 <style>
-    pre {
-      font-size: 9px;
-      max-width: 100vw;
-      overflow: auto;
-      white-space: pre-wrap;
-      color: green;
-    }
-</style>
-</head>
-<body onload="brython({debug: 1, cache: true})">
-<script type="text/python" src="index.py"></script>
-
-<!-- we need to split this vertically into the following sections:
-
-1. input text (2 lines)
-2. compression result (2 lines)
-3. hexdump (10% of the height)
-4. selected bits (2 lines)
-5. log (flexible height)
-6. huffman browser (3 lines)
-7. footer (2 lines)
-
-let's use flexbox for this. don't allow the main container to scroll, but allow the individual sections to scroll if needed.
-
-make sections stick to the top and bottom of the container, and make the middle sections scrollable if needed.
-
--->
-
-<style>
+/* ── Reset & Base ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-    /*
-    --input_container_color: pink;
-    --bit_explanation_color: lightblue;
-    --hexdump_color: lightgreen;
-    --selected_bits_container_color: lightcoral;
-    --output_color: lightyellow;
-    --huffman_browser_color: peachpuff;
-    --footer_color: lightgray;
-    */
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface-raised: #232736;
+    --border: #2e3348;
+    --text: #e1e4ed;
+    --text-dim: #8b8fa7;
+    --accent: #6c8cff;
+    --accent-hover: #8aa4ff;
+    --green: #5ccf8a;
+    --red: #f06868;
+    --orange: #e8a855;
+    --font-mono: 'SF Mono', 'Cascadia Code', 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+    --radius: 8px;
+    --radius-lg: 12px;
 }
 
-.col_input_container { background-color: var(--input_container_color); }
-.col_bit_explanation { background-color: var(--bit_explanation_color); }
-.col_hexdump { background-color: var(--hexdump_color); }
-.col_selected_bits_container { background-color: var(--selected_bits_container_color); }
-.col_output { background-color: var(--output_color); }
-.col_huffman_browser { background-color: var(--huffman_browser_color); }
-.col_footer { background-color: var(--footer_color); }
+html, body {
+    height: 100%;
+    font-family: var(--font-sans);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+}
 
 body {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-}
-
-/* input container. button is on the right, input box occupies the rest of the space */
-.input_container {
     display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    height: 4em;
-    background-color: var(--input_container_color);
+    flex-direction: column;
+    overflow: hidden;
 }
 
-.input_container > * { background-color: var(--input_container_color); }
+pre {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    max-width: 100%;
+    overflow: auto;
+    white-space: pre;
+    color: var(--green);
+    margin: 0;
+}
 
-.input {
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); text-decoration: underline; }
+
+/* ── Section Panels ───────────────────────────────────────────── */
+.section {
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.section-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.section-label .icon {
+    font-size: 13px;
+    opacity: 0.7;
+}
+
+/* ── Header / Input ───────────────────────────────────────────── */
+.header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.header .logo {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--accent);
+    white-space: nowrap;
+    letter-spacing: -0.02em;
+}
+
+.header .logo span {
+    color: var(--text-dim);
+    font-weight: 400;
+}
+
+#input {
     flex: 1;
-    /* occupy all remaining space */
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color 0.15s;
 }
 
-.bit_explanation {
-    height: 6em;
-    background-color: var(--bit_explanation_color);
+#input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(108, 140, 255, 0.15);
 }
 
-.bit_explanation > * { background-color: var(--bit_explanation_color); }
+#help_button {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 13px;
+    padding: 8px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
 
-#explanation_hint {
-    height: 1em;
+#help_button:hover:not(:disabled) {
+    background: var(--border);
+    border-color: var(--accent);
+}
+
+#help_button:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+#loading_label {
+    font-size: 11px;
+    color: var(--orange);
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+#loading_label {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* ── Compression Stats ────────────────────────────────────────── */
+.stats-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
 }
 
 #compression_result {
-    height: 2em;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-dim);
 }
 
+#explanation_hint {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-style: italic;
+}
+
+/* ── Hexdump ──────────────────────────────────────────────────── */
 #hexdump {
-  height: 15%;
-  background-color: var(--hexdump_color);
+    flex: 2;
+    min-height: 60px;
+    overflow: auto;
+    background: var(--bg);
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11.5px;
+    line-height: 1.6;
+    white-space: pre;
 }
 
-#hexdump > * { background-color: var(--hexdump_color); }
-
-.selected_bits_container {
-  height: 2em;
-  background-color: var(--selected_bits_container_color);
+#hexdump span {
+    transition: background-color 0.1s;
 }
 
-.selected_bits_container > * { background-color: var(--selected_bits_container_color); }
+/* ── Selected Bits ────────────────────────────────────────────── */
+.selected-bits-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+}
 
+#selected_bits {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 500;
+}
+
+/* ── Log Output ───────────────────────────────────────────────── */
 #output {
-    flex: 1;
-    /* occupy all remaining space */
-    background-color: var(--output_color);
+    flex: 3;
+    min-height: 40px;
+    overflow: auto;
+    background: var(--bg);
+    padding: 8px 16px;
+    font-size: 11.5px;
+    line-height: 1.7;
+    border-bottom: 1px solid var(--border);
 }
 
-#output > * { background-color: var(--output_color); }
+#output span {
+    transition: background-color 0.1s;
+    border-radius: 2px;
+}
+
+/* ── Huffman Tables ───────────────────────────────────────────── */
+.huffman-section {
+    flex: 2;
+    min-height: 60px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid var(--border);
+    padding: 0;
+}
+
+.huffman-section > .section-label {
+    padding: 6px 16px 4px;
+    flex-shrink: 0;
+}
 
 #huffman_browser {
-    height: 6em;
+    flex: 1;
     overflow: auto;
     display: flex;
     flex-direction: row;
-    background-color: var(--huffman_browser_color);
+    gap: 1px;
+    background: var(--border);
+    min-height: 0;
 }
 
-#huffman_browser > * { background-color: var(--huffman_browser_color); }
-
-#huffman_browser_table1, #huffman_browser_table2 {
+#huffman_browser_table1,
+#huffman_browser_table2 {
     width: 50%;
-    height: 100%;
+    overflow: auto;
+    background: var(--surface);
+    padding: 4px;
 }
 
 table {
     border-collapse: collapse;
     width: 100%;
+    font-family: var(--font-mono);
+    font-size: 11px;
 }
 
-td, th {
-    border: 1px solid black;
+th {
+    background: var(--surface-raised);
+    color: var(--text-dim);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 4px 8px;
+    text-align: left;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    border-bottom: 1px solid var(--border);
 }
 
+td {
+    padding: 3px 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+}
+
+tr:hover td {
+    background: var(--surface-raised);
+}
+
+/* ── Footer ───────────────────────────────────────────────────── */
 .footer {
-    height: 2em;
-    padding: 1em;
-    background-color: var(--footer_color);
+    flex-shrink: 0;
+    padding: 6px 16px;
+    font-size: 11px;
+    color: var(--text-dim);
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    text-align: center;
 }
 
-.footer > * { background-color: var(--footer_color); }
-
+/* ── Modal ─────────────────────────────────────────────────────── */
 .modal {
-  display: none; /* Hidden by default */
-  position: fixed; /* Stay in place */
-  z-index: 1; /* Sit on top */
-  left: 0;
-  top: 0;
-  width: 100%; /* Full width */
-  height: 100%; /* Full height */
-  overflow: auto; /* Enable scroll if needed */
-  background-color: rgb(0,0,0); /* Fallback color */
-  background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    display: none;
+    position: fixed;
+    z-index: 100;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    overflow: auto;
+    padding: 40px 16px;
 }
 
-/* Modal Content/Box */
 .modal-content {
-  background-color: #fefefe;
-  padding: 20px;
-  border: 1px solid #888;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 32px;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    line-height: 1.7;
 }
 
-/* The Close Button */
+.modal-content h2 {
+    font-size: 20px;
+    margin-bottom: 16px;
+    color: var(--accent);
+}
+
+.modal-content p {
+    margin-bottom: 12px;
+    color: var(--text);
+}
+
+.modal-content strong {
+    color: var(--accent);
+}
+
+.modal-content pre {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    margin: 8px 0 12px;
+    font-size: 12px;
+    overflow-x: auto;
+}
+
+.help-section {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin: 8px 0;
+}
+
+.help-section-num {
+    display: inline-block;
+    background: var(--accent);
+    color: var(--bg);
+    font-size: 11px;
+    font-weight: 700;
+    width: 22px;
+    height: 22px;
+    line-height: 22px;
+    text-align: center;
+    border-radius: 50%;
+    margin-right: 6px;
+}
+
 #close_button {
-  color: red;
-  float: right;
-  font-size: 48px;
-  font-weight: bold;
-  /* make it stick to the right, even when scrolled */
-  position: fixed;
-  right: 10px;
-  top: 10px;
+    position: absolute;
+    right: 16px;
+    top: 12px;
+    font-size: 28px;
+    color: var(--text-dim);
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
+    transition: all 0.15s;
+    line-height: 1;
 }
 
-#close_button:hover,
-#close_button:focus {
-  color: black;
-  text-decoration: none;
-  cursor: pointer;
+#close_button:hover {
+    background: var(--border);
+    color: var(--text);
 }
 
+/* ── Scrollbar Styling ────────────────────────────────────────── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* ── Color hints for help sections ────────────────────────────── */
+.col_input_container { border-left: 3px solid var(--accent); padding-left: 12px; }
+.col_bit_explanation { border-left: 3px solid var(--orange); padding-left: 12px; }
+.col_hexdump { border-left: 3px solid var(--green); padding-left: 12px; }
+.col_selected_bits_container { border-left: 3px solid #c084fc; padding-left: 12px; }
+.col_output { border-left: 3px solid #f472b6; padding-left: 12px; }
+.col_huffman_browser { border-left: 3px solid #22d3ee; padding-left: 12px; }
+
+/* ── Responsive: portrait mobile ──────────────────────────────── */
+@media (max-width: 600px) {
+    .header { flex-wrap: wrap; gap: 8px; padding: 8px 12px; }
+    .header .logo { font-size: 13px; }
+    #input { order: 3; min-width: 100%; font-size: 13px; }
+    .section { padding: 6px 12px; }
+    #hexdump { padding: 6px 12px; font-size: 10px; }
+    #output { padding: 6px 12px; font-size: 10px; }
+    #huffman_browser { flex-direction: column; }
+    #huffman_browser_table1, #huffman_browser_table2 { width: 100%; }
+}
+
+/* ── Responsive: landscape short screens ─────────────────────── */
+@media (max-height: 500px) {
+    .header { padding: 4px 12px; }
+    .section { padding: 4px 12px; }
+    .section-label { margin-bottom: 0; font-size: 9px; }
+    #hexdump { padding: 4px 12px; font-size: 10.5px; line-height: 1.4; }
+    #output { padding: 4px 12px; font-size: 10.5px; line-height: 1.4; }
+    .huffman-section { flex: 1; min-height: 40px; }
+    .huffman-section > .section-label { padding: 2px 12px; }
+    .footer { padding: 2px 12px; font-size: 10px; }
+    #input { padding: 4px 8px; font-size: 13px; }
+    #help_button { padding: 4px 10px; font-size: 12px; }
+}
 </style>
+</head>
+<body onload="brython({debug: 1, cache: true})">
+<script type="text/python" src="index.py"></script>
 
+<!-- ── Header / Input ──────────────────────────────────────────── -->
+<div class="header">
+    <div class="logo">pyflate2 <span>/ gzip visualizer</span></div>
+    <input type="text" id="input" value="Hello, world!" placeholder="Type text to compress...">
+    <button disabled id="help_button">
+        &#9432; Help <span id="loading_label">Loading...</span>
+    </button>
+</div>
 
-
-<!-- 1. input text -->
-<span class="input_container">
-<input type="text" id="input" value="Hello, world!" class="input">
-<button disabled id="help_button">Help <span id="loading_label">(please wait for loading first...)</span></button>
-</span>
-
+<!-- ── Modal ────────────────────────────────────────────────────── -->
 <div class="modal">
-
   <div class="modal-content">
     <span id="close_button">&times;</span>
-    <p>Hi! Congrats on finding my little page! Its goal is to teach you about
-    how computers compress data, based on the example of "gzip" algorithm.</p>
+    <h2>How to use this visualizer</h2>
 
-    <p>If you need more information, consider reading the following article:
+    <p>This tool teaches you how gzip compression works by letting you
+    see the compressed binary data and the Huffman codes in real time.</p>
 
-    <a href="https://commandlinefanatic.com/cgi-bin/showarticle.cgi?article=art001">
-    https://commandlinefanatic.com/cgi-bin/showarticle.cgi?article=art001
-    </a></p>
+    <p>For a deeper dive, check out
+    <a href="https://commandlinefanatic.com/cgi-bin/showarticle.cgi?article=art001">this article on gzip internals</a>.</p>
 
-    <p>Here's a quick overview of the sections of the website:</p>
+    <div class="help-section col_input_container">
+        <p><span class="help-section-num">1</span> <strong>Input</strong> &mdash;
+        Type any text and the page will instantly show the compressed output.</p>
+    </div>
 
-    <p class="col_input_container"
-    >1. <strong>Input text</strong>: you can change the text here. Once you do, the page will
-    show you the compressed version of the text, as well as the binary
-    representation of the compressed data.</p>
+    <div class="help-section col_bit_explanation">
+        <p><span class="help-section-num">2</span> <strong>Compression Stats</strong> &mdash;
+        Shows how much the data was compressed. Negative savings means the compressed output
+        is larger than the input (common for very short strings).</p>
+    </div>
 
-    <p class="col_bit_explanation"
-    >2. <strong>Compression result</strong>: this section shows you how much the data was
-    compressed. If the number is negative, it means the data was made bigger
-    by compression. This happens when the data is too small to compress or
-    when the data is already tightly packed, e.g. compressed data or
-    encrypted.</p>
+    <div class="help-section col_hexdump">
+        <p><span class="help-section-num">3</span> <strong>Hexdump</strong> &mdash;
+        Binary representation of the compressed data. Hover over bits to see their meaning.
+        Colors group bits that belong to the same symbol.</p>
 
-    <p class="col_hexdump"
-    >3. <strong>Hexdump</strong>: this section shows you the binary representation of the
-    compressed data. You can hover over the bits to see their meaning.</p>
+        <p>Example line:</p>
+        <pre><span>00000008  02 ff f3 48  [</span><span style="color:#9AC261;">00000010</span> <span style="color:#A4529A">11111111</span> <span style="color:#E8B274;">11110</span><span style="color:#43867B;">011</span> <span style="color:#7E64C9;">01001</span><span style="color:#E8B274;">000</span><span>] ...H</span></pre>
 
-    <p class="col_hexdump"
-    >For example, let's analyze following example line:</p>
+        <p>Left: byte offset. Middle: hex bytes. Right: interactive binary bits (color-coded)
+        and ASCII representation (dots for non-printable).</p>
+    </div>
 
-    <pre class="col_hexdump"
-    ><span>00000008  02 ff f3 48  [</span><span style="color:
-    #9AC261;">00000010</span><span> </span><span style="color:
-    #A4529A">11111111<span> </span><span style="color:
-    #E8B274;">11110</span><span style="color:
-    #43867B;">011</span><span> </span><span style="color:
-    #7E64C9;">01001</span><span style="color:
-    #E8B274;">000</span><span> </span
-    ><span>] </span><span>.</span><span>.</span><span>.</span><span>H</span
-    ></pre>
+    <div class="help-section col_selected_bits_container">
+        <p><span class="help-section-num">4</span> <strong>Selected Bits</strong> &mdash;
+        Shows the binary and hex value of the bits you hover over. Gzip packs bits
+        left-to-right byte-wise but right-to-left bit-wise, which can be confusing
+        &mdash; this display helps clarify.</p>
+    </div>
 
-    <p class="col_hexdump"
-    >On the left, you see the offset in the data (00000008 in hexadecimal,
-    which means that we're starting at the 8th byte).</p>
+    <div class="help-section col_output">
+        <p><span class="help-section-num">5</span> <strong>Log</strong> &mdash;
+        Step-by-step decompression log. Hover over a log entry to highlight its bits in the hexdump,
+        or hover hexdump bits to scroll to the corresponding log entry.</p>
 
-    <p class="col_hexdump"
-    >In the middle, you see the
-    hexadecimal representation of the data. On the right, you see the binary
-    representation of the same data. The binary representation is interactive:
-    you can hover over the bits to see their meaning. The bits are also
-    color-coded so that you can see the structure of the data more easily.
+        <p>Example: <code style="color:var(--green)">[91] found literal b'H'. r=72, hex(r)=0x48</code>
+        &mdash; at bit 91, the algorithm found literal "H" (Huffman code 72 = 0x48).</p>
+    </div>
 
-    <p class="col_hexdump"
-    >The final row shows the ASCII representation of the data. Non-printable
-    characters are shown as dots.</p>
+    <div class="help-section col_huffman_browser">
+        <p><span class="help-section-num">6</span> <strong>Huffman Tables</strong> &mdash;
+        The two Huffman code tables used by the compressor. First table: literal/length codes.
+        Second table: distance codes. Read more about
+        <a href="https://en.wikipedia.org/wiki/Huffman_coding">Huffman coding</a>.</p>
+    </div>
 
-    <p class="col_selected_bits_container"
-    >4. <strong>Selected bits</strong>: this section shows you the bits
-    you've selected in the hexdump. It shows you the binary and hexadecimal
-    representation of the bits you've selected. It can be useful, because
-    the remaining parts of the page use different representations and
-    the way bits are packed in gzip files can be confusing: left to right
-    byte-wise but right to left bit-wise. Let's come back to the example
-    line from the hexdump:</p>
-
-    <pre class="col_selected_bits_container"
-    ><span>00000008  02 ff f3 48  [</span><span style="color:
-    #9AC261;">00000010</span><span> </span><span style="color:
-    #A4529A">11111111<span> </span><span style="color:
-    #E8B274;">11110</span><span style="color:
-    #43867B;">011</span><span> </span><span style="color:
-    #7E64C9;">01001</span><span style="color:
-    #E8B274;">000</span><span> </span
-    ><span>] </span><span>.</span><span>.</span><span>.</span><span>H</span
-    ></pre>
-
-    <p class="col_selected_bits_container"
-    >The first two groups are "normal" 8-bit bytes: <span style="color:
-    #9AC261;">00000010</span> and <span style="color:#A4529A;">11111111</span>.
-    Then there's a 3-bit group that breaks the alignment: <span style="color:
-    #43867B;">011</span>. Note that the allocation always starts from the
-    right, which also the case here. The next group is
-    <span style="color:#E8B274;">00011110</span>, which is broken down into
-    two parts: <span style="color:#E8B274;">11110</span> and
-    <span style="color:#E8B274;">000</span>.
-    The last group here is <span style="color:#7E64C9;">01001</span>, which
-    was put into the remaining space in the last byte. Can you see why that
-    can be confusing and I decided to add the extra highlighting?</p>
-
-    <p class="col_output"
-    >5. <strong>Log</strong>: this section shows you the log messages from the
-    compression algorithm. It can be useful to understand how the compression
-    works. You can hover over the log messages to see the corresponding bits
-    in the hexdump. Consider the following example log message:</p>
-
-    <pre class="col_output"
-    >[91] found literal b'H'. r=72, hex(r)=0x48</pre>
-
-    <p class="col_output"
-    >The number in square brackets is the bit number. The message tells you
-    that the algorithm found a literal "H" in the input data. The "r" is the
-    reverse symbol, which is the Huffman code for the literal "H". The
-    hexadecimal representation of "r" is 0x48. You can find the corresponding
-    bits in the hexdump by hovering over the log message.</p>
-
-    <p class="col_huffman_browser"
-    >6. <strong>Huffman browser</strong>: this section shows you the Huffman
-    codes used in the compression algorithm. The first table shows you the
-    Huffman codes for the literals and the second table shows you the Huffman
-    codes for the lengths. The second table is used to compress the length
-    of the repeated literals and is used less frequently.</p>
-
-    <p class="col_huffman_browser"
-    >You can read more about huffman coding here:
-    <a href="https://en.wikipedia.org/wiki/Huffman_coding">
-    https://en.wikipedia.org/wiki/Huffman_coding
-    </a></p>
-
-    <p>That's it! I hope you enjoy the page and learn something new! If you
-    have any questions, feel free to reach out to me in a Github issue here:
-
-    <a href="https://github.com/d33mobile/pyflate2/issues/new">
-        https://github.com/d33mobile/pyflate2/issues/new
-    </a></p>
-
-    <p>Cheers,</p><p> ~d33tah</p>
-
+    <p style="margin-top: 20px; color: var(--text-dim); font-size: 13px;">
+        Questions or feedback?
+        <a href="https://github.com/d33mobile/pyflate2/issues/new">Open a GitHub issue</a>.
+        &mdash; <em>d33tah</em>
+    </p>
   </div>
-
 </div>
 
 <script>
-    // remove the loading text
     document.getElementById("help_button").onclick = function() {
         document.querySelector(".modal").style.display = "block";
     }
     document.getElementById("close_button").onclick = function() {
         document.querySelector(".modal").style.display = "none";
     }
+    // Close modal on backdrop click
+    document.querySelector(".modal").onclick = function(e) {
+        if (e.target === this) this.style.display = "none";
+    }
+    // Close modal on Escape
+    document.addEventListener("keydown", function(e) {
+        if (e.key === "Escape") document.querySelector(".modal").style.display = "none";
+    });
 </script>
 
+<!-- ── Compression Stats ───────────────────────────────────────── -->
+<div class="section">
+    <div class="section-label"><span class="icon">&#9881;</span> Compression</div>
+    <div class="stats-bar">
+        <span id="compression_result"></span>
+        <span id="explanation_hint">Hover/tap bits to see their meaning</span>
+    </div>
+</div>
 
-<!-- 2. compression result -->
-<span class="bit_explanation">
-<p id="explanation_hint"><strong>Hover/tap over the bits to see their meaning.</strong></p>
-<p id="compression_result"></p>
-</span>
-
-<!-- 3. hexdump -->
+<!-- ── Hexdump ─────────────────────────────────────────────────── -->
 <pre id="hexdump"></pre>
 
-<!-- 4. selected bits -->
-<span class="selected_bits_container">
-Selected bits: <span id="selected_bits"></span>
-</span>
+<!-- ── Selected Bits ───────────────────────────────────────────── -->
+<div class="section">
+    <div class="selected-bits-bar">
+        <span class="section-label" style="margin-bottom:0"><span class="icon">&#9670;</span> Selected</span>
+        <span id="selected_bits">&mdash;</span>
+    </div>
+</div>
 
-<!-- 5. log -->
-<pre id="output">Loading a demo of pyflate2. This will take a few seconds...
+<!-- ── Log ─────────────────────────────────────────────────────── -->
+<pre id="output">Initializing pyflate2 engine...
 </pre>
 
-<!-- 6. huffman browser. inside there are two tables, split horizontally
-    using flexbox -->
-<span id="huffman_browser">
-    <span id="huffman_browser_table1"></span>
-    <span id="huffman_browser_table2"></span>
-</span>
+<!-- ── Huffman Tables ──────────────────────────────────────────── -->
+<div class="huffman-section">
+    <div class="section-label"><span class="icon">&#9776;</span> Huffman Tables</div>
+    <div id="huffman_browser">
+        <div id="huffman_browser_table1"></div>
+        <div id="huffman_browser_table2"></div>
+    </div>
+</div>
 
-<!-- 7. footer -->
-<p class="footer">
-    Code that's running this demo can be found at:
-
-    <a href="https://github.com/d33mobile/pyflate2/">
-    https://github.com/d33mobile/pyflate2/
-    </a>
-</p>
+<!-- ── Footer ──────────────────────────────────────────────────── -->
+<div class="footer">
+    <a href="https://github.com/d33mobile/pyflate2/">pyflate2</a> &mdash; interactive gzip compression visualizer
+</div>
 
 </body>
 </html>

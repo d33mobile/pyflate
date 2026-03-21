@@ -65,7 +65,7 @@ def equidistributed_color(i):
     visually distinct."""
     # https://gamedev.stackexchange.com/a/46469/22860
     return colorsys.hsv_to_rgb(
-        (i * 0.618033988749895) % 1.0, 0.5, 1.0 - (i * 0.618033988749895) % 0.5
+        (i * 0.618033988749895) % 1.0, 0.6, 0.85 + (i * 0.618033988749895) % 0.15
     )
 
 
@@ -73,8 +73,8 @@ def el_mouseleave(ev):
     """Handle mouseleave event by undoing the highlighting."""
     cls = ev.target.classList[0]
     for el in document.getElementsByClassName(cls):
-        el.style.backgroundColor = "white"
-    document["selected_bits"].text = ""
+        el.style.backgroundColor = ""
+    document["selected_bits"].text = "\u2014"
 
 
 def el_mouseenter(ev):
@@ -90,7 +90,7 @@ def el_mouseenter(ev):
                 class_bits = int(c[4:])
                 t = class_bits
                 bits[t] = el.text
-        el.style.backgroundColor = "black"
+        el.style.backgroundColor = "rgba(108, 140, 255, 0.3)"
     bits_s = "".join(bits[k] for k in reversed(sorted(bits.keys())))
     bits_i = int(bits_s, 2)
     document["selected_bits"].text = f"{bits_s} ({bits_i}, 0x{bits_i:02X})"
