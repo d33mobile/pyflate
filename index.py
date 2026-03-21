@@ -69,20 +69,30 @@ def equidistributed_color(i):
     )
 
 
-def el_mouseleave(ev):
-    """Handle mouseleave event by undoing the highlighting."""
-    cls = ev.target.classList[0]
-    for el in document.getElementsByClassName(cls):
+_highlighted_els = []
+
+
+def _clear_highlights():
+    """Clear all current highlights."""
+    global _highlighted_els
+    for el in _highlighted_els:
         el.style.backgroundColor = ""
-    # Clear huffman highlight (snapshot the live collection first)
+    _highlighted_els = []
     for el in list(document.getElementsByClassName("huffman-highlight")):
         el.classList.remove("huffman-highlight")
     document["selected_bits"].text = "\u2014"
 
 
+def el_mouseleave(ev):
+    """Handle mouseleave event by undoing the highlighting."""
+    _clear_highlights()
+
+
 def el_mouseenter(ev):
     """Handle mouseenter event by highlighting the corresponding bits in
     the hexdump and message log."""
+    global _highlighted_els
+    _clear_highlights()
 
     cls = ev.target.classList[0]
     bits = {}
@@ -94,6 +104,7 @@ def el_mouseenter(ev):
                 t = class_bits
                 bits[t] = el.text
         el.style.backgroundColor = "rgba(108, 140, 255, 0.3)"
+        _highlighted_els.append(el)
     bits_s = "".join(bits[k] for k in reversed(sorted(bits.keys())))
     bits_i = int(bits_s, 2)
     document["selected_bits"].text = f"{bits_s} ({bits_i}, 0x{bits_i:02X})"
