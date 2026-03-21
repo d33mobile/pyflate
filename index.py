@@ -99,8 +99,42 @@ def el_mouseenter(ev):
     document["selected_bits"].text = f"{bits_s} ({bits_i}, 0x{bits_i:02X})"
 
     # for all elements with class huffman-{bits_i}, highlight and scroll to center
-    for el in document.getElementsByClassName(f"huffman-{bits_i}"):
+    # also switch to the correct tab on mobile
+    from browser import window  # pylint: disable=import-outside-toplevel
+
+    # Determine which table based on log context at this offset
+    # Distance-related log messages indicate table 2
+    offset_key = cls.split("-")[-1] if cls.startswith("message-") else None
+    is_distance = False
+    if offset_key and offset_key.isdigit():
+        msgs = log_messages.get(int(offset_key), [])
+        dist_keywords = ("extra bits for dist", "r1=", "distance")
+        is_distance = any(
+            kw in m for m in msgs for kw in dist_keywords
+        )
+    target_tab = "2" if is_distance else "1"
+
+    matched_els = list(document.getElementsByClassName(f"huffman-{bits_i}"))
+    for el in matched_els:
         el.classList.add("huffman-highlight")
+
+    # Switch tab before scrolling so the target element is visible
+    if window.innerWidth < 600:
+        for tab in document.select(".huffman-tab"):
+            if tab.attrs.get("data-tab") == target_tab:
+                tab.classList.add("active")
+            else:
+                tab.classList.remove("active")
+        t1 = document["huffman_browser_table1"]
+        t2 = document["huffman_browser_table2"]
+        if target_tab == "1":
+            t1.classList.remove("huff-hidden")
+            t2.classList.add("huff-hidden")
+        else:
+            t1.classList.add("huff-hidden")
+            t2.classList.remove("huff-hidden")
+
+    for el in matched_els:
         el.scrollIntoView({"block": "center"})
 
     # figure out if the bit is a bit or a log message.
