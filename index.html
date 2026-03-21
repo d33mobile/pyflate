@@ -388,6 +388,17 @@ tr:hover td {
     border-radius: var(--radius);
     padding: 12px 16px;
     margin: 8px 0;
+    overflow: hidden;
+}
+
+.help-demo {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+.help-section pre {
+    max-width: 100%;
+    overflow-x: auto;
 }
 
 .help-section-num {
@@ -506,8 +517,8 @@ tr:hover td {
         <p><span class="help-section-num">2</span> <strong>Compression Stats</strong> &mdash;
         Shows how much the data was compressed. A positive diff means the
         compressed output is larger (common for very short strings).</p>
-        <div class="help-demo" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:8px;padding:4px 0">
-            13B &rarr; 33B (+20B, &times;2.54) &middot; <em style="font-family:var(--font-sans)">Hover/tap bits to see their meaning</em>
+        <div class="help-demo" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:8px;padding:4px 0;white-space:nowrap">
+            13B &rarr; 33B <span style="color:var(--red)">(+20B, &times;2.54)</span> &middot; <em style="font-family:var(--font-sans)">Hover/tap bits to see their meaning</em>
         </div>
     </div>
 

@@ -314,8 +314,11 @@ def run_program(*_, **__) -> None:
         diff = len(buf) - len(s)
         sign = "+" if diff > 0 else ""
         ratio = len(buf) / len(s)
-        summary = f"{len(s)}B \u2192 {len(buf)}B ({sign}{diff}B, \u00d7{ratio:.2f})"
-        document["compression_result"].text = summary
+        color = "#f06868" if diff > 0 else "#5ccf8a"
+        cr = document["compression_result"]
+        cr.clear()
+        cr <= S(f"{len(s)}B \u2192 {len(buf)}B ")
+        cr <= S(f"({sign}{diff}B, \u00d7{ratio:.2f})", style=f"color:{color}")
     except Exception as e:
         # In case of error, clear the hexdump and log the error message to
         # the output area. It might be relevant to log the traceback as well.
