@@ -74,6 +74,9 @@ def el_mouseleave(ev):
     cls = ev.target.classList[0]
     for el in document.getElementsByClassName(cls):
         el.style.backgroundColor = ""
+    # Clear huffman highlight (snapshot the live collection first)
+    for el in list(document.getElementsByClassName("huffman-highlight")):
+        el.classList.remove("huffman-highlight")
     document["selected_bits"].text = "\u2014"
 
 
@@ -95,9 +98,10 @@ def el_mouseenter(ev):
     bits_i = int(bits_s, 2)
     document["selected_bits"].text = f"{bits_s} ({bits_i}, 0x{bits_i:02X})"
 
-    # for all elements with class huffman-{bits_i}, scroll them into view
+    # for all elements with class huffman-{bits_i}, highlight and scroll to center
     for el in document.getElementsByClassName(f"huffman-{bits_i}"):
-        el.scrollIntoView()
+        el.classList.add("huffman-highlight")
+        el.scrollIntoView({"block": "center"})
 
     # figure out if the bit is a bit or a log message.
     # we need to scroll the OPPOSITE type of element into view
@@ -121,7 +125,7 @@ def el_mouseenter(ev):
 
         # scroll the opposite type of element into view
         if el_is_bit != is_bit:
-            el.scrollIntoView()
+            el.scrollIntoView({"block": "center"})
             break
 
 
