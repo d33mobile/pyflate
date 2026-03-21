@@ -249,10 +249,27 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
     padding: 0;
 }
 
-.huffman-section > .section-label {
-    padding: 6px 16px 4px;
+.huffman-tabs {
+    display: flex;
     flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
 }
+
+.huffman-tab {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 12px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+}
+
+.huffman-tab:hover { color: var(--text); }
+.huffman-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
 #huffman_browser {
     flex: 1;
@@ -431,8 +448,9 @@ tr:hover td {
     .section { padding: 6px 12px; }
     #hexdump { padding: 6px 8px; font-size: 9.5px; }
     #output { padding: 6px 12px; font-size: 10px; }
-    #huffman_browser { flex-direction: column; }
     #huffman_browser_table1, #huffman_browser_table2 { width: 100%; }
+    #huffman_browser_table1.huff-hidden, #huffman_browser_table2.huff-hidden { display: none; }
+    #huffman_browser { flex-direction: column; }
 }
 
 /* ── Responsive: landscape short screens ─────────────────────── */
@@ -588,12 +606,46 @@ tr:hover td {
 
 <!-- ── Huffman Tables ──────────────────────────────────────────── -->
 <div class="huffman-section">
-    <div class="section-label"><span class="icon">&#9776;</span> Huffman Tables</div>
+    <div class="huffman-tabs">
+        <button class="huffman-tab active" data-tab="1">Literals / Lengths</button>
+        <button class="huffman-tab" data-tab="2">Distances</button>
+    </div>
     <div id="huffman_browser">
         <div id="huffman_browser_table1"></div>
         <div id="huffman_browser_table2"></div>
     </div>
 </div>
+<script>
+(function() {
+    var tabs = document.querySelectorAll('.huffman-tab');
+    var t1 = document.getElementById('huffman_browser_table1');
+    var t2 = document.getElementById('huffman_browser_table2');
+    function isMobile() { return window.innerWidth < 600; }
+    function applyTab(which) {
+        if (!isMobile()) { t1.classList.remove('huff-hidden'); t2.classList.remove('huff-hidden'); return; }
+        if (which === '1') {
+            t1.classList.remove('huff-hidden'); t2.classList.add('huff-hidden');
+        } else {
+            t1.classList.add('huff-hidden'); t2.classList.remove('huff-hidden');
+        }
+    }
+    // Set initial state
+    applyTab('1');
+    for (var i = 0; i < tabs.length; i++) {
+        tabs[i].addEventListener('click', function() {
+            if (!isMobile()) return;
+            for (var j = 0; j < tabs.length; j++) tabs[j].classList.remove('active');
+            this.classList.add('active');
+            applyTab(this.getAttribute('data-tab'));
+        });
+    }
+    // Re-apply on resize (e.g. rotation)
+    window.addEventListener('resize', function() {
+        var active = document.querySelector('.huffman-tab.active');
+        applyTab(active ? active.getAttribute('data-tab') : '1');
+    });
+})();
+</script>
 
 <!-- ── Footer ──────────────────────────────────────────────────── -->
 <div class="footer">
